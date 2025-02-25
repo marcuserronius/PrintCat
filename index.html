@@ -59,6 +59,7 @@ $(document).ready(function(){
     :root{
       --c-line: #99f;
       --c-panelbg: #ccf;
+
     }
     body{
       font-family: sans-serif;
@@ -87,7 +88,7 @@ $(document).ready(function(){
     div#loader{
       left:100vw;
     }
-    a.category,a.subcategory,a.item,a.subitem{
+    a.listing{
       display: inline-block;
       border: 1px solid var(--c-line);
       border-radius: 1em;
@@ -141,10 +142,72 @@ $(document).ready(function(){
       margin-right:1.5em;
       margin-left: 0.5em;
     }
+    .filterbutton > input{
+      display: none;
+    }
+    .filterbutton{
+      display: inline-block;
+      border: 1px solid grey;
+      padding: 1em;
+      margin: 0.5em;
+      border-radius: 1.5em;      
+      background: lightgrey;
+      color: grey;
+    }
+    .filterbutton:has(:checked){
+      border-color: var(--c-line);
+      background: var(--c-panelbg);
+      color: black;
+    }
+    a.listing{
+      display: none;
+    }
+    body:has(.filterbutton>input[class~="MK3S_0.4"]:checked)   a.listing[data-tags~="MK3S_0.4"],
+    body:has(.filterbutton>input[class~="MK3S_0.6"]:checked)   a.listing[data-tags~="MK3S_0.6"],
+    body:has(.filterbutton>input[class~="MK4S_HF0.4"]:checked) a.listing[data-tags~="MK4S_HF0.4"]
+    {
+      display: inline-block;
+    }
+
+    body:has(.filterbutton>input[class~="2_color"]:checked) a.listing:not([data-tags~="2_color"]),
+    body:has(.filterbutton>input[class~="large"]:checked)   a.listing:not([data-tags~="large"])
+    {
+      display: none;
+    }
+
   </style>
 </head>
-<body>
+<body class="">
 <h1>Member Print Catalog</h1>
+<div id=filters>
+  Printers:
+  <label for=filter-printer-all class=filterbutton>
+    <input name=printer type=radio id=filter-printer-all class="MK3S_0.4 MK3S_0.6 MK4S_HF0.4" checked>
+    All Printers
+  </label>
+  <label for=filter-printer-MK3S_0.4 class=filterbutton>
+    <input name=printer type=radio id=filter-printer-MK3S_0.4 class=MK3S_0.4>
+    Printer: MK3S 0.4
+  </label>
+  <label for=filter-printer-MK3S_0.6 class=filterbutton>
+    <input name=printer type=radio id=filter-printer-MK3S_0.6 class=MK3S_0.6>
+    Printer: MK3S 0.6 (Turbo)
+  </label>
+  <label for=filter-printer-MK4S_HF0.4 class=filterbutton>
+    <input name=printer type=radio id=filter-printer-MK4S_HF0.4 class=MK4S_HF0.4>
+    Printer: MK4S 0.4
+  </label>
+  <br>
+  Tags:
+  <label for=filter-tag-2_color class=filterbutton>
+    <input type=checkbox id=filter-tag-2_color class=2_color>
+    2 Colors
+  </label>
+  <label for=filter-tag-large class=filterbutton>
+    <input type=checkbox id=filter-tag-large class=large>
+    Large
+  </label>
+</div>
 <div id=main>
 	<div id=content>
 	</div>

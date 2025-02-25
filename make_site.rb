@@ -3,43 +3,33 @@
 
 require 'ostruct'
 require './lib/template'
+require './lib/gcode'
+require 'shellwords'
+require 'erb'
+
 class String
   def sqz() lines.map(&:strip).join; end
-  def tmpl(**kw)
-    kw.keys.inject(self){|s,k|s.gsub("{#{k}}",kw[k])}
-  end
+  # def tmpl(**kw)
+  #   kw.keys.inject(self){|s,k|s.gsub("{#{k}}",kw[k])}
+  # end
 end
 
-### The HTML Part
+def esc str
+  ERB::Util.url_encode str
+end
+
+### The HTML Templates
 html = OpenStruct.new
 
-# category listing
-html.catlist = Template.new(<<-HTML, squeeze: true)
-    <div class=catlist id="topcat-listing">
-      <br><!-- breadcrumb space-->
-      {cats{
-      <a class="category" id="{catid}" href="{catpath}" title="{catname}">
-        <img src="{catimagepath}">
-        <span>{catname}</span>
-      </a>
-      }}
-    </div>
-HTML
 
-# crumbs:
-# ⬅︎ <a class=breadcrumb href="list.html" name="Top">Top</a>
-# {crumbs{
-# &nbsp;/ <a class=breadcrumb href="{link}" title="{name}">{name}</a>
-# }}
-
-# NEW subcategory and item listings
+# category, subcategory and item listings
 html.catlist = Template.new(<<-HTML,squeeze:true)
-    <div id="{id}-listing">
+    <div id="">
       {crumbs{<a class=breadcrumb href="{link}" title="{name}">{name}</a> }}
       <br><!-- end breadcrumbs -->
       <div class=subcatlist>
         {subcats{
-        <a class="subcategory" id="{id}" href="{path}" title="{name}">
+        <a class="subcategory listing" id="{id}" href="{path}" title="{name}" data-tags="{tags}">
           <img src="{imagepath}">
           <span>{name}</span>
         </a>
@@ -47,7 +37,7 @@ html.catlist = Template.new(<<-HTML,squeeze:true)
       </div>
       <div class=itemlist>
         {items{
-        <a class="item" id="{id}" href="{path}" title="{name}">
+        <a class="item listing" id="{id}" href="{path}" title="{name}" data-tags="{tags}">
           <img src="{imagepath}">
           <span>{name}</span>
         </a>
@@ -58,35 +48,12 @@ HTML
 
 
 # subitem listing
-html.subitemlist_pre = <<-HTML.sqz
-    <div class=subitemlist id="{itemid}-listing">
-HTML
-html.subitemlist_mid = <<-HTML.sqz
-      <a class="subitem" href="{subitempath}" title="{subitemname}" download="{subitemfilename}">
-        <img src="{subitemimagepath}">
-        <span>{notes}</span>
-      </a>
-HTML
-html.subitemlist_post = <<-HTML.sqz
-    </div>
-HTML
-html.breadcrumbs_pre = <<-HTML.sqz
-  ⬅︎ <a class=breadcrumb href="list.html" name="Top">Top</a> / <wbr>
-HTML
-html.breadcrumbs = <<-HTML.sqz
-  <a class=breadcrumb href="{link}" title="{name}">{name}</a>
-HTML
-html.breadcrumbs_post = <<-HTML.sqz
-  <br>
-HTML
-
-# NEW subitem listing
 html.subitemlist = Template.new(<<-HTML,squeeze:true)
     <div class=subitemlist id="{itemid}-listing">
       {crumbs{<a class=breadcrumb href="{link}" title="{name}">{name}</a> }}
       <br><!-- end breadcrumbs -->
       {subitems{
-      <a class="subitem" href="{path}" title="{name}" download="{filename}">
+      <a class="subitem listing" href="{path}" title="{name}" download="{filename}" data-tags="{tags}">
         <img src="{imagepath}">
         <span>{notes}</span>
       </a>
@@ -95,8 +62,8 @@ html.subitemlist = Template.new(<<-HTML,squeeze:true)
 HTML
 
 
-# NEW subitem listing
 
+### Load information and lists
 
 # the missing image
 nothumb = "nothumb.png"
@@ -114,15 +81,13 @@ printfiles = Dir.glob('**/*.{b,}gcode').sort
 topcatpaths = []
 subcatpaths = []
 catpaths    = [] # in case it makes no sense to differentiate between top categories and subcats
+cattags     = {}
 itempaths   = []
+printinfo   = {}
 printfiles.each do |path|
   # split filename into parts
   *cats,item,file = path.split("/")
-  # top categories:
-  topcatpaths<<cats.first
-  # subcategories: add each parent category 
-  cats.inject{ |parent,child| (subcatpaths<<(parent+"/"+child)).last }
-  # catpaths (experimental):
+  # catpaths:
   cats.inject(nil){ |parent,child| (catpaths<<[parent,child].compact.join("/")).last }
   # itempaths:
   itempaths<<[*cats,item].join("/")
@@ -131,13 +96,34 @@ catpaths.uniq!
 itempaths.uniq!
 warn subcatpaths.inspect
 
+# get and parse item information
+printfiles.each do |path|
+  i = printinfo[path] = OpenStruct.new
+  i.gcode = Gcode.new(path)
+  i.filename = apath[path].last
+  i.fullname = i.filename[/^(.+?)_/,1]
+  nameparts = i.fullname.match(/
+    (?<longname>
+      (?<shortname>.+?)\s*
+      (?<tags>\(.+?\))?
+    )\s*
+    (?<printer>\[.+?\])?$
+  /x)
+  i.longname = nameparts[:longname]
+  i.shortname = nameparts[:shortname]
+  i.tags = (nameparts[:tags]||"(none)")[1...-1].split(/\s*,\s*/)
+  i.printer = [i.gcode[:printer_model], i.gcode[:printer_variant]].compact.join(" ")
+  i.etags = i.tags.map{|t| t.gsub(" ","_")}
+  i.atags = i.etags+[i.printer.gsub(" ","_")]
+  i.printtime = i.gcode[:"estimated printing time (normal mode)"]
+end
 
 def pp(val) p(val); val; end
 
 
-#### other listings
+### Output listings
 
-### new category and item listing
+# category and item listing
 # "" => top level
 # nil => list all
 ["",nil,*catpaths].each do |cp|
@@ -145,158 +131,82 @@ def pp(val) p(val); val; end
     idx.write html.catlist.fill(
       id: id[cp],
       crumbs: (apath[cp||" "].size).times.map do |n|
-        { link: idx_for[spath[apath[cp||" "].first(n)]],
+        { link: esc(idx_for[spath[apath[cp||" "].first(n)]]),
           name: n>0 ? apath[cp||" "][n-1] : "Top"
         }
       end,
       subcats: catpaths.select{|x|cp ? apath[x][0...-1]==apath[cp]:false}.map do |x|
         { id: x.gsub(/[^[:alnum:]]/,"_"),
-          path: idx_for[x],
+          path: esc(idx_for[x]),
           name: x.split("/").last,
-          imagepath: Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb
+          tags: printfiles.map{|f|printinfo[f].atags if f.start_with? x}.flatten.compact.uniq.join(" "),
+          imagepath: esc(Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb)
         }
       end + (cp&.empty? ?
         [{id: "all",
           path: "listall.html",
           name: "All Items",
+          tags: printfiles.map{|f|printinfo[f].atags}.flatten.compact.uniq.join(" "),
           imagepath: nothumb
         }]
         : []
       ),
       items: itempaths.select{|x|cp ? apath[x][0...-1]==apath[cp]:true}.map do |x|
         { id: x.gsub(/[^[:alnum:]]/,"_"),
-          path: idx_for[x],
+          path: esc(idx_for[x]),
           name: x.split("/").last[/^(.+?)(?:\s\-\s[\d\()]+)?$/,1],
-          imagepath: Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb
+          tags: printfiles.map{|f|printinfo[f].atags if f.start_with? x}.flatten.compact.uniq.join(" "),
+          imagepath: esc(Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb)
         }
       end
     ) # template
   end
 end
 
-# get subcategories, items, subitems
-subcatpathlist = []
-itempathlist = []
-subitempathlist = []
-printfiles.each do |filepath|
-  # Split into parts
-  *cats,item,file = filepath.split("/")
-  # For each subcategory, generate a parent directory path
-  cats.inject(){|pth,pt| (subcatpathlist << File.join(pth,pt)).last } if cats.size>=2
-  # for items:
-  itempathlist << File.join(*cats,item)
-  # subitems:
-  subitempathlist << filepath
-end
-subcatpathlist = subcatpathlist.uniq.sort
-itempathlist = itempathlist.uniq.sort
-
-### output subcategory/item listings
-
-# (catpathlist+subcatpathlist).map do |cp|
-#   File.open(File.join(cp,"olist.html"), "w") do |o|
-#     # breadcrumbs
-#     o.write html.breadcrumbs_pre
-#     crumbs = cp.split("/").inject([]){|a,b|
-#       [*a,[a.last,b].compact.join("/")]
-#     }[0...-1].map{|c| [c+"/list.html",c.split("/").last]}
-#     o.write crumbs.map{|c| html.breadcrumbs.tmpl(link:c[0],name:c[1])}.join(" / ")
-#     o.write html.breadcrumbs_post
-
-#     catid = cp.gsub(/[^[:alnum:]]/,"_")
-#     o.write html.subcatlist_wrap_pre.tmpl(catid:catid)
-#     # subcategories for this category if they exist
-#     scps = subcatpathlist.select{|scp|scp.start_with? cp+"/"}
-#     o.write html.subcatlist_pre unless scps.empty?
-#     scps.each do |scp|
-#       subcatid = scp.gsub(/[^[:alnum:]]/,"_")
-#       subcatpath = scp
-#       subcatname = scp.split("/").last
-#       subcatimagepath = Dir.glob(File.join(scp,"thumb.{png,jpg,jpeg}")).first || nothumb
-#       o.write html.subcatlist_mid.tmpl(
-#         subcatid:subcatid,
-#         subcatpath:subcatpath+"/list.html",
-#         subcatname:subcatname,
-#         subcatimagepath:subcatimagepath
-#       )
-#     end
-#     o.write html.subcatlist_post unless scps.empty?
-
-#     # items for this category if they exist
-#     ips = itempathlist.select{|ip| ip.start_with? cp+"/"}
-#     o.write html.itemlist_pre unless ips.empty?
-#     ips.each do |ip|
-#       itemid = ip.gsub(/[^[:alnum:]]/,"_")
-#       itempath = ip
-#       itemname = ip.split("/").last[/^(.+?)(?:\s\-\s[\d\()]+)?$/,1]
-#       itemimagepath = Dir.glob(File.join(ip,"thumb.{png,jpg,jpeg}")).first || nothumb
-#       o.write html.itemlist_mid.tmpl(
-#         itemid:itemid,
-#         itempath:itempath+"/list.html",
-#         itemname:itemname,
-#         itemimagepath:itemimagepath
-#       )
-#     end
-#     o.write html.itemlist_post unless ips.empty?
-#     o.write html.subcatlistwrap_post
-#   end
-# end
-
-### output "all items" listing
-# File.open("biglist.html",'w') do |o|
-#   o.write html.itemlist_pre
-#   # breadcrumbs: just the top level
-#   o.write html.breadcrumbs_pre
-#   o.write html.breadcrumbs_post
-
-#   #warn itempathlist.inspect
-
-#   itempathlist.each do |ip|
-#     itemid = ip.gsub(/[^[:alnum:]]/,"_")
-#     itempath = ip
-#     itemname = ip.split("/").last[/^(.+?)(?:\s\-\s[\d\()]+)?$/,1]
-#     itemimagepath = Dir.glob(File.join(ip,"thumb.{png,jpg,jpeg}")).first || nothumb
-#     o.write html.itemlist_mid.tmpl(
-#       itemid:itemid,
-#       itempath:itempath+"/list.html",
-#       itemname:itemname,
-#       itemimagepath:itemimagepath
-#     )
-#   end
-#   o.write html.itemlist_post
-# end
-
-### new subitem listing
+# subitem listing
 itempaths.each do |ip|
   File.open(idx_for[ip],'w') do |idx|
     idx.write html.subitemlist.fill(
       id: id[ip],
       crumbs: (apath[ip].size).times.map do |n|
-        { link: idx_for[spath[apath[ip].first(n)]],
+        { link: esc(idx_for[spath[apath[ip].first(n)]]),
           name: n>0 ? apath[ip][n-1] : "Top"
         }
       end,
       subitems: printfiles.select{|x|apath[x][0...-1]==apath[ip]}.map do |x|
-        matches = apath[x].last.match(/
-          ^(?<name>.+?)_
-          ((?<nozzle>[\d\.]+)n_)? # optional nozzle size
-          (?<layer_height>[\d\.]+mm)_
-          (?<material>[^_]+)_
-          (?<printer>[^_]+)_
-          (?<time>[\dhm]+)\.gcode$
-        /x)
-        if Dir.glob(ip+"/"+matches[:name]+".{jpg,jpeg,png}").empty?
-          require './lib/gcode'
-          File.write(ip+"/"+matches[:name]+".png",Gcode.new(x)[:thumbnail])
+        i = printinfo[x]
+        # matches = apath[x].last.match(/
+        #   ^(?<name>.+?)_
+        #   ((?<nozzle>[\d\.]+)n_)? # optional nozzle size
+        #   (?<layer_height>[\d\.]+mm)_
+        #   (?<material>[^_]+)_
+        #   (?<printer>[^_]+)_
+        #   (?<time>[\dhm]+)\.gcode$
+        # /x)
+        # # remove tags and printer name from name
+        # nameparts = matches[:name].match(/
+        #   (?<fullname>
+        #     (?<longname>
+        #       (?<shortname>.+?)\s*
+        #       (?<tags>\(.+?\))?
+        #     )\s*
+        #     (?<printer>\[.+?\])?
+        #   )$
+        # /x)
+
+        if Dir.glob(ip+"/"+i.fullname+".{jpg,jpeg,png}").empty?
+          File.write(ip+"/"+i.fullname+".png",i.gcode[:thumbnail])
         end
-        { path: x,
-          name: matches[:name],
-          filename: apath[x].last,
-          imagepath: Dir.glob(ip+"/"+matches[:name]+".{jpg,jpeg,png}").first || nothumb,
+        { path: esc(x),
+          name: i.shortname,
+          tags: i.atags.join(" "),
+          filename: i.filename,
+          imagepath: esc(Dir.glob(ip+"/"+Shellwords.escape(i.fullname)+".{jpg,jpeg,png}").first || nothumb),
           notes:[
-            matches[:name],
-            "<i>Printer:</i> "+matches[:printer]+(matches[:nozzle] ? " #{matches[:nozzle]} nozzle":""),
-            "<i>Print time:</i> "+matches[:time]
+            i.shortname,
+            "<i>Printer:</i> "+i.printer,
+            "<i>Print time:</i> "+i.printtime,
+            "<i>Tagged:</i> "+i.tags.join(", ")
           ].join("<br>")
         }
       end
