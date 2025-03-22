@@ -3,10 +3,28 @@
 # Parses PrusaSlicer gcode files to get some basic info from them
 
 
-
 class Gcode
 	attr_accessor :path, :values
 	private :path=, :values=, :values
+
+	# Parse a gcode filename
+	def self.filename(path)
+		i={}
+	  i[:filename] = apath[path].last
+	  i[:fullname] = i[:filename][/^(.+?)_/,1]
+	  nameparts = i[:fullname].match(/
+	    (?<longname>
+	      (?<shortname>.+?)\s*
+	      (?<tags>\(.+?\))?
+	    )\s*
+	    (?<printer>\[.+?\])?$
+	  /x)
+	  i[:longname] = nameparts[:longname]
+	  i[:shortname] = nameparts[:shortname]
+	  i[:tags] = (nameparts[:tags]||"(none)")[1...-1].split(/\s*,\s*/)
+	  return i
+	end
+
 
 	def initialize(path)
 		self.path = path

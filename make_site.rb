@@ -175,25 +175,6 @@ itempaths.each do |ip|
       end,
       subitems: printfiles.select{|x|apath[x][0...-1]==apath[ip]}.map do |x|
         i = printinfo[x]
-        # matches = apath[x].last.match(/
-        #   ^(?<name>.+?)_
-        #   ((?<nozzle>[\d\.]+)n_)? # optional nozzle size
-        #   (?<layer_height>[\d\.]+mm)_
-        #   (?<material>[^_]+)_
-        #   (?<printer>[^_]+)_
-        #   (?<time>[\dhm]+)\.gcode$
-        # /x)
-        # # remove tags and printer name from name
-        # nameparts = matches[:name].match(/
-        #   (?<fullname>
-        #     (?<longname>
-        #       (?<shortname>.+?)\s*
-        #       (?<tags>\(.+?\))?
-        #     )\s*
-        #     (?<printer>\[.+?\])?
-        #   )$
-        # /x)
-
         if Dir.glob(ip+"/"+i.fullname+".{jpg,jpeg,png}").empty?
           File.write(ip+"/"+i.fullname+".png",i.gcode[:thumbnail])
         end

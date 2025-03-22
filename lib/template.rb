@@ -32,6 +32,7 @@ class Template
 	attr_accessor :template
 	private :template=
 
+	# Creates a template from a string
 	# the squeeze option removes newlines and any whitespace 
 	# at the start of a line
 	def initialize(str,squeeze: false)
@@ -39,7 +40,7 @@ class Template
 		parse(str)
 	end
 
-
+	# Fills in the template
 	# either pass keyword arguments, a hash, or an object that responds
 	# to #to_h, such as OpenStruct. Values must respond to #to_s, and 
 	# loopable collections must respond to #each, yielding objects that
