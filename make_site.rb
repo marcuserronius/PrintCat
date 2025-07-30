@@ -4,6 +4,7 @@
 require 'ostruct'
 require './lib/template'
 require './lib/gcode'
+require './lib/thumbnail'
 require 'shellwords'
 require 'erb'
 
@@ -15,7 +16,7 @@ class String
 end
 
 def esc str
-  ERB::Util.url_encode str
+  str.gsub(/\?|\ |\#|\[|\]/){|c|"%%%02x"%c.ord}
 end
 
 ### The HTML Templates
@@ -30,7 +31,7 @@ html.catlist = Template.new(<<-HTML,squeeze:true)
       <div class=subcatlist>
         {subcats{
         <a class="subcategory listing" id="{id}" href="{path}" title="{name}" data-tags="{tags}">
-          <img src="{imagepath}">
+          <embed src="{imagepath}">
           <span>{name}</span>
         </a>
         }}
@@ -38,7 +39,7 @@ html.catlist = Template.new(<<-HTML,squeeze:true)
       <div class=itemlist>
         {items{
         <a class="item listing" id="{id}" href="{path}" title="{name}" data-tags="{tags}">
-          <img src="{imagepath}">
+          <embed src="{imagepath}">
           <span>{name}</span>
         </a>
         }}
@@ -54,7 +55,7 @@ html.subitemlist = Template.new(<<-HTML,squeeze:true)
       <br><!-- end breadcrumbs -->
       {subitems{
       <a class="subitem listing" href="{path}" title="{name}" download="{filename}" data-tags="{tags}">
-        <img src="{imagepath}">
+        <embed src="{imagepath}">
         <span>{notes}</span>
       </a>
     }}
@@ -140,14 +141,14 @@ def pp(val) p(val); val; end
           path: esc(idx_for[x]),
           name: x.split("/").last,
           tags: printfiles.map{|f|printinfo[f].atags if f.start_with? x}.flatten.compact.uniq.join(" "),
-          imagepath: esc(Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb)
+          imagepath: esc(Thumbnail.get(pp(x)))
         }
       end + (cp&.empty? ?
         [{id: "all",
           path: "listall.html",
           name: "All Items",
           tags: printfiles.map{|f|printinfo[f].atags}.flatten.compact.uniq.join(" "),
-          imagepath: nothumb
+          imagepath: esc(Thumbnail.get(pp(".")))
         }]
         : []
       ),
@@ -156,7 +157,7 @@ def pp(val) p(val); val; end
           path: esc(idx_for[x]),
           name: x.split("/").last[/^(.+?)(?:\s\-\s[\d\()]+)?$/,1],
           tags: printfiles.map{|f|printinfo[f].atags if f.start_with? x}.flatten.compact.uniq.join(" "),
-          imagepath: esc(Dir.glob(File.join(x,"thumb.{png,jpg,jpeg}")).first || nothumb)
+          imagepath: esc(Thumbnail.get(pp(x)))
         }
       end
     ) # template
@@ -175,14 +176,11 @@ itempaths.each do |ip|
       end,
       subitems: printfiles.select{|x|apath[x][0...-1]==apath[ip]}.map do |x|
         i = printinfo[x]
-        if Dir.glob(ip+"/"+i.fullname+".{jpg,jpeg,png}").empty?
-          File.write(ip+"/"+i.fullname+".png",i.gcode[:thumbnail])
-        end
         { path: esc(x),
           name: i.shortname,
           tags: i.atags.join(" "),
           filename: i.filename,
-          imagepath: esc(Dir.glob(ip+"/"+Shellwords.escape(i.fullname)+".{jpg,jpeg,png}").first || nothumb),
+          imagepath: esc(Thumbnail.get(x,i.gcode)),
           notes:[
             i.shortname,
             "<i>Printer:</i> "+i.printer,

@@ -4,36 +4,44 @@
 
 
 class Gcode
-	attr_accessor :path, :values
-	private :path=, :values=, :values
+	attr_accessor :path, :values, :name_parts
+	private :path=, :values=, :values, :name_parts=
 
-	# Parse a gcode filename
-	def self.filename(path)
-		i={}
-	  i[:filename] = apath[path].last
-	  i[:fullname] = i[:filename][/^(.+?)_/,1]
-	  nameparts = i[:fullname].match(/
-	    (?<longname>
-	      (?<shortname>.+?)\s*
-	      (?<tags>\(.+?\))?
-	    )\s*
-	    (?<printer>\[.+?\])?$
-	  /x)
-	  i[:longname] = nameparts[:longname]
-	  i[:shortname] = nameparts[:shortname]
-	  i[:tags] = (nameparts[:tags]||"(none)")[1...-1].split(/\s*,\s*/)
-	  return i
-	end
+  def self.new(path)
+    self::CACHE ||= {}
+    self::CACHE[path] ||
+      (self::CACHE[path] = super)
+  end
 
 
 	def initialize(path)
 		self.path = path
+    parse_name_parts
 	end
 
 	def inspect
 		"#{self.class}(#{path})"
 	end
 
+  # parse gcode filename
+  private def parse_name_parts
+    self.name_parts = {}
+    i = name_parts
+    i[:parent], i[:filename] = *File.split(path)
+    i[:fullname] = i[:filename][/^(.+?)_/,1]
+    matches = i[:fullname].match(/
+      (?<longname>
+        (?<shortname>.+?)\s*
+        (?<tags>\(.+?\))?
+      )\s*
+      (?<printer>\[.+?\])?$
+    /x)
+    i[:longname] = matches[:longname]
+    i[:shortname] = matches[:shortname]
+    i[:tags] = (matches[:tags]||"(none)")[1...-1].split(/\s*,\s*/)
+  end
+
+	# grab the first value for the given key (should be the only one)
 	def [](key)
 		if values.nil?
 			self.values = {}
@@ -41,6 +49,17 @@ class Gcode
 		end
 		values[key.to_s]
 	end
+
+	# save the gcode thumbnail under the "fullname"; returns nil if unsuccessful
+	def save_thumb
+		if self[:thumbnail]
+      fn = File.join(name_parts[:parent], name_parts[:fullname]+".png")
+      File.write(fn,self[:thumbnail])
+      fn
+    else
+      nil
+    end
+  end
 
 	# fetch all the keys
 	private def fetch_values
@@ -70,5 +89,6 @@ class Gcode
 
 			end # until g.eof?
 		end # close file
+
 	end
 end

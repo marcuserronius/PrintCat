@@ -101,7 +101,7 @@ $(document).ready(function(){
     }
 
 
-    div[class$=list] img{
+    div[class$=list] :is(img,embed){
       width: 15em;
       height: 15em;
       aspect-ratio: 1 / 1;
@@ -109,7 +109,7 @@ $(document).ready(function(){
       display: block;
       margin: auto;
       vertical-align: top;
-
+      pointer-events: none;
     }
    div.subitemlist img{
       width: 25em;
@@ -182,11 +182,11 @@ $(document).ready(function(){
 <div id=filters>
   Printers:
   <label for=filter-printer-all class=filterbutton>
-    <input name=printer type=radio id=filter-printer-all class="MK3S_0.4 MK3S_0.6 MK4S_HF0.4" checked>
+    <input name=printer type=radio id=filter-printer-all class="MK3S_0.4 MK3S_0.6 MK4S_HF0.4">
     All Printers
   </label>
   <label for=filter-printer-MK3S_0.4 class=filterbutton>
-    <input name=printer type=radio id=filter-printer-MK3S_0.4 class=MK3S_0.4>
+    <input name=printer type=radio id=filter-printer-MK3S_0.4 class=MK3S_0.4 checked>
     Printer: MK3S 0.4
   </label>
   <label for=filter-printer-MK3S_0.6 class=filterbutton>
