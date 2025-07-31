@@ -1,1 +1,0 @@
-Customizable Easy Gyro by atartanian on Thingiverse: https://www.thingiverse.com/thing:802145

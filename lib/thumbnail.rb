@@ -14,6 +14,7 @@ def sx(s)
 end
 
 def esc str
+  p([str,str.gsub(/\?|\ |\#|\[|\]|\&/){|c|"%%%02x"%c.ord}])
   str.gsub(/\?|\ |\#|\[|\]|\&/){|c|"%%%02x"%c.ord}
 end
 

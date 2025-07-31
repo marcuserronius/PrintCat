@@ -9,9 +9,9 @@
     <image x="512" y="0"   width="512" height="512" preserveAspectRatio="xMidYMid slice" id="image2"
       xlink:href="Nested%20Fidget%20Rings%20-%202989760/Nested%20Fidget%20Rings%20(2%20color).jpg" />
     <image x="0"   y="512" width="512" height="512" preserveAspectRatio="xMidYMid slice" id="image3"
-      xlink:href="Gyro%20Fidget%20-%20802145/Gyro%20Fidget%20(2%20color)%20%5bMK4S%5d.png" />
-    <image x="512" y="512" width="512" height="512" preserveAspectRatio="xMidYMid slice" id="image4"
       xlink:href="Infinity%20Fidget%20Cube%20-%204997903(1)/Infinity%20Fidget%20Cube.jpg" />
+    <image x="512" y="512" width="512" height="512" preserveAspectRatio="xMidYMid slice" id="image4"
+      xlink:href="Customizable%20Plain%20Gyro/Quick%20Gyro.jpg" />
   </g>
   <path id="frame" style="fill:none;stroke:black;stroke-width:16;"
     d="M 512,0 V 1024 M 0,512 h 1024" />

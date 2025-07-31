@@ -1,0 +1,35 @@
+{
+    "fileFormatVersion": "1",
+    "parameterSets": {
+        "New set 1": {
+            "angle": "55",
+            "bearing_gap": "0.5",
+            "cut": "0.5",
+            "gap": "1.5",
+            "outer_diameter": "80",
+            "rings": "4",
+            "thickness": "3",
+            "width": "4"
+        },
+        "New set 2": {
+            "angle": "55",
+            "bearing_gap": "0.5",
+            "cut": "0.5",
+            "gap": "1.5",
+            "outer_diameter": "80",
+            "rings": "4",
+            "thickness": "3",
+            "width": "4"
+        },
+        "quickprint": {
+            "angle": "55",
+            "bearing_gap": "0.4",
+            "cut": "0.7",
+            "gap": "1.1",
+            "outer_diameter": "35",
+            "rings": "3",
+            "thickness": "2",
+            "width": "6"
+        }
+    }
+}
